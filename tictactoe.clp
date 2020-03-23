@@ -339,6 +339,7 @@
     (assert (Enlinea ?movement ?x1 ?y1 ?x2 ?y2 ?ficha)
     )
 )
+
 (defrule eliminate_duplicate_en_linea
     (Enlinea ?movement ?x1 ?y1 ?x2 ?y2 ?ficha)
     ?f <- (Enlinea ?movement ?x2 ?y2 ?x1 ?y1 ?ficha)
@@ -346,6 +347,31 @@
     (retract ?f)
 )
 
+(defrule normal_aligned 
+    (Posicion ?x1 ?y1 ?ficha)
+    (Posicion ?x2 ?y2 ?ficha)
+    (Conectado ?x1 ?y1 ?aligned ?x_aux ?y_aux)
+    (Conectado ?x_aux ?y_aux ?aligned ?x2 ?y2)
+    (Posicion ?x_aux ?y_aux ?inter)
+
+    (test (neq ?ficha " "))
+    (test (eq ?inter " "))
+    =>
+    (assert (2_en_linea ?aligned ?x1 ?y1 ?x2 ?y2 ?ficha)
+    )
+)
+
+(defrule eliminate_same_2_en_linea
+    ?f <- (2_en_linea ?aligned ?x1 ?y1 ?x1 ?y1 ?ficha)
+    =>
+    (retract ?f)
+)
+(defrule eliminate_duplicate_2_en_linea
+    (2_en_linea ?aligned2 ?x1 ?y1 ?x2 ?y2 ?ficha)
+    ?g <- (2_en_linea ?aligned2 ?x2 ?y2 ?x1 ?y1 ?ficha)
+    =>
+    (retract ?g)
+)
 
 ; --------------------------------------------------------------------------------
 ; FIN DE JUEGO
