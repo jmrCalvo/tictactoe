@@ -327,6 +327,27 @@
 )
 
 ; --------------------------------------------------------------------------------
+; EXTENSION DEJL JUEGO KBS
+; --------------------------------------------------------------------------------
+(defrule en_linea
+    (Posicion ?x1 ?y1 ?ficha)
+    (Posicion ?x2 ?y2 ?ficha)
+    (Conectado ?x1 ?y1 ?movement ?x2 ?y2)
+    (Conectado ?x2 ?y2 ?movement ?x1 ?y1)
+    (test (neq ?ficha " "))
+    =>
+    (assert (Enlinea ?movement ?x1 ?y1 ?x2 ?y2 ?ficha)
+    )
+)
+(defrule eliminate_duplicate_en_linea
+    (Enlinea ?movement ?x1 ?y1 ?x2 ?y2 ?ficha)
+    ?f <- (Enlinea ?movement ?x2 ?y2 ?x1 ?y1 ?ficha)
+     =>
+    (retract ?f)
+)
+
+
+; --------------------------------------------------------------------------------
 ; FIN DE JUEGO
 ; --------------------------------------------------------------------------------
 (defrule tres_en_raya
