@@ -65,8 +65,8 @@
     (Conectado 2 c vertical 3 c)
     (Conectado 1 a diagonal 2 b)
     (Conectado 2 b diagonal 3 c)
-    (Conectado 1 c diagonal_inversa 2 b)
-    (Conectado 2 b diagonal_inversa 3 a)
+    (Conectado 1 c inversa_d1agonal 2 b)
+    (Conectado 2 b inversa_d1agonal 3 a)
 )
 
 (defrule Conectado_es_simetrica
@@ -291,6 +291,22 @@
             (reducir_fichas_sin_colocar X))
 )
 
+(defrule clisp_juega_sin_criterio_fichas_sin_colocar_2
+    (declare (salience -9000))
+    ?f <- (Turno X)
+    (Fichas_sin_colocar X ?n)
+    ;?g <- (Posicion ?i ?j " ") ; <-- toma una posicion del tablero vacia, sin ningun criterio (la primera que haga 'match')
+
+    (is_winning  ?x1 ?y1 ?x2 ?y2 O ?destino_i ?destino_j)
+    ?g <- (Posicion ?destino_i ?destino_j " ")
+    (test (neq (?destino_i " ")))
+    =>
+    (printout t "Juego poner ficha en " ?i ?j crlf)
+    (retract ?f ?g)
+    (assert (Posicion ?destino_i ?destino_j X) ; <-- actualizar tablero 
+            (Turno O) 
+            (reducir_fichas_sin_colocar X))
+)
 ;;; EXTENDER PARA GENERAR UNA JUGADA BAJO ALGUN CRITERIO
 ;;; Directamente: (assert (Posicion ?i ?j X))
 ;;; Mediante jugada: (assert (Juega X ?origen_i ?origen_j ?destino_i ?destino_j))
@@ -305,10 +321,11 @@
     ?f <- (Turno X)
     (Todas_fichas_en_tablero X)
     (Posicion ?origen_i ?origen_j X)        ; <-- toma una posicion del tablero con X, sin ningun criterio (la primera que haga 'match')
-    (Posicion ?destino_i ?destino_j " ")    ; <-- toma una posicion del tablero vacia, sin ningun criterio (la primera que haga 'match')
+    (Posicion ?i ?j " ")    ; <-- toma una posicion del tablero vacia, sin ningun criterio (la primera que haga 'match')
+    (is_winning  ?x1 ?y1 ?x2 ?y2 O ?destino_i ?destino_j)
     (Conectado ?origen_i ?origen_j ? ?destino_i ?destino_j) ; <-- se asegura de que este conectada
     =>
-    (assert (Juega X ?origen_i ?origen_j ?destino_i ?destino_j))
+    (assert (Juega X ?origen_i ?origen_j ?destino_i!?i ?destino_j!?j))
     (printout t "Juego mover la ficha de "  ?origen_i ?origen_j " a " ?destino_i ?destino_j crlf)
     (retract ?f)
 )
@@ -383,7 +400,7 @@
     
     (test (eq ?third_element " "))
     =>
-    (assert (is_winning ?movement ?x1 ?y1 ?x2 ?y2 ?ficha ?x3 ?y3)
+    (assert (is_winning ?x1 ?y1 ?x2 ?y2 ?ficha ?x3 ?y3)
     )
 )
 
@@ -394,7 +411,7 @@
     
     (test (eq ?third_element " "))
     =>
-    (assert (is_winning ?x1 ?y1 ?x2 ?y2 ?ficha ?x3 ?y3)
+    (assert (is_winning  ?x1 ?y1 ?x2 ?y2 ?ficha ?x3 ?y3)
     )
 )
 
@@ -408,6 +425,36 @@
     )
 )
 
+(defrule eliminate_duplicate_win
+    (is_winning ?x1 ?y1 ?x2 ?y2 ?ficha ?x_mid ?y_mid)
+    ?k <- (is_winning  ?x2 ?y2 ?x1 ?y1 ?ficha ?x_mid2 ?y_mid)
+    =>
+    (retract ?k)
+)
+
+(defrule eliminate_Enlinea
+    (Juega ?ficha ?origen_i ?origen_j ?destino_i ?destino_j)
+    ?k1 <- (Enlinea ?movement ?origen_i ?origen_j ?x2 ?y2 ?ficha)
+    ?k2 <- (Enlinea ?movement2 ?x1 ?y1 ?origen_i ?origen_j ?ficha)
+    =>
+    (retract ?k1 ?k2)
+)
+
+(defrule eliminate_2Enlinea
+    (Juega ?ficha ?origen_i ?origen_j ?destino_i ?destino_j)
+    ?k1 <- (2_en_linea ?aligned ?origen_i ?origen_j ?x2 ?y2 ?ficha ?x_aux ?y_aux)
+    ?k2 <- (2_en_linea ?aligned2 ?x2 ?y2 ?origen_i ?origen_j ?ficha ?x_aux2 ?y_aux2)
+    =>
+    (retract ?k1 ?k2)
+)
+
+(defrule eliminate_win
+    (Juega ?ficha ?origen_i ?origen_j ?destino_i ?destino_j)
+    ?k1 <- (is_winning ?origen_i ?origen_j ?x2 ?y2 ?ficha ?x_mid ?y_mid)
+    ?k2 <- (is_winning  ?x1 ?y1 ?origen_i ?origen_j ?ficha ?x_mid2 ?y_mid2)
+    =>
+    (retract ?k1 ?k2)
+)
 
 ; --------------------------------------------------------------------------------
 ; FIN DE JUEGO
@@ -433,9 +480,11 @@
     ; evitar que se tome dos veces la misma casilla en la comprobacion
     (test (or (neq ?i1 ?i3) (neq ?j1 ?j3)))
     
+    ;eliminar todo los winning
+    ?g <- (is_winning  ?x1 ?y1 ?origen_i ?origen_j ?ficha ?x_mid2 ?y_mid2)
     =>
     (printout t ?jugador " ha ganado pues tiene tres en raya " ?i1 ?j1 " " ?i2 ?j2 " " ?i3 ?j3 crlf)
-    (retract ?f)
+    (retract ?f ?g)
     (assert (muestra_posicion))
 ) 
 
