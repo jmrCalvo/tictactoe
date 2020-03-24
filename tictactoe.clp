@@ -264,6 +264,8 @@
     ?f <- (Juega O ?origen_i ?origen_j ?destino_i ?destino_j)
     ?h <- (Posicion ?origen_i ?origen_j O)
     ?g <- (Posicion ?destino_i ?destino_j " ")
+    ;?k1 <- (Enlinea ?movement ?origen_i ?origen_j ?x2 ?y2 O)
+    ;?k2 <- (Enlinea ?movement ?x1 ?y1 ?origen_i ?origen_j O)
     =>
     (retract ?f ?g ?h)
     (assert (Turno X) ; <-- pasar turno
@@ -319,6 +321,8 @@
     ?f <- (Juega X ?origen_i ?origen_j ?destino_i ?destino_j)
     ?h <- (Posicion ?origen_i ?origen_j X) ; <-- con el cogido actual no seria necesario comprobarlo
     ?g <- (Posicion ?destino_i ?destino_j " ")
+    ;?k1 <- (Enlinea ?movement ?origen_i ?origen_j ?x2 ?y2 X)
+    ;?k2 <- (Enlinea ?movement ?x1 ?y1 ?origen_i ?origen_j X)
     =>
     (retract ?f ?g ?h)
     (assert (Turno O)  ; <-- pasar turno a X
@@ -352,26 +356,58 @@
     (Posicion ?x2 ?y2 ?ficha)
     (Conectado ?x1 ?y1 ?aligned ?x_aux ?y_aux)
     (Conectado ?x_aux ?y_aux ?aligned ?x2 ?y2)
-    (Posicion ?x_aux ?y_aux ?inter)
+    
 
     (test (neq ?ficha " "))
-    (test (eq ?inter " "))
+
     =>
-    (assert (2_en_linea ?aligned ?x1 ?y1 ?x2 ?y2 ?ficha)
+    (assert (2_en_linea ?aligned ?x1 ?y1 ?x2 ?y2 ?ficha ?x_aux ?y_aux)
     )
 )
 
 (defrule eliminate_same_2_en_linea
-    ?f <- (2_en_linea ?aligned ?x1 ?y1 ?x1 ?y1 ?ficha)
+    ?f <- (2_en_linea ?aligned ?x1 ?y1 ?x1 ?y1 ?ficha ?x_aux ?y_aux)
     =>
     (retract ?f)
 )
 (defrule eliminate_duplicate_2_en_linea
-    (2_en_linea ?aligned2 ?x1 ?y1 ?x2 ?y2 ?ficha)
-    ?g <- (2_en_linea ?aligned2 ?x2 ?y2 ?x1 ?y1 ?ficha)
+    (2_en_linea ?aligned2 ?x1 ?y1 ?x2 ?y2 ?ficha ?x_aux ?y_aux)
+    ?g <- (2_en_linea ?aligned2 ?x2 ?y2 ?x1 ?y1 ?ficha ?x_aux ?y_aux)
     =>
     (retract ?g)
 )
+(defrule position_left_to_win 
+    (Enlinea ?movement ?x1 ?y1 ?x2 ?y2 ?ficha)
+    (Conectado ?x1 ?y1 ?movement ?x3 ?y3)
+    (Posicion ?x3 ?y3 ?third_element)
+    
+    (test (eq ?third_element " "))
+    =>
+    (assert (is_winning ?movement ?x1 ?y1 ?x2 ?y2 ?ficha ?x3 ?y3)
+    )
+)
+
+(defrule position_right_to_win 
+    (Enlinea ?movement ?x1 ?y1 ?x2 ?y2 ?ficha)
+    (Conectado ?x2 ?y2 ?movement ?x3 ?y3)
+    (Posicion ?x3 ?y3 ?third_element)
+    
+    (test (eq ?third_element " "))
+    =>
+    (assert (is_winning ?x1 ?y1 ?x2 ?y2 ?ficha ?x3 ?y3)
+    )
+)
+
+(defrule position_center_to_win
+    (2_en_linea ?aligned ?x1 ?y1 ?x2 ?y2 ?ficha ?x_mid ?y_mid)
+    (Posicion ?x_mid ?y_mid ?third_element)
+
+    (test (eq ?third_element " "))
+    =>
+    (assert (is_winning ?x1 ?y1 ?x2 ?y2 ?ficha ?x_mid ?y_mid)
+    )
+)
+
 
 ; --------------------------------------------------------------------------------
 ; FIN DE JUEGO
