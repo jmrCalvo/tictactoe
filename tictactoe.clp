@@ -264,10 +264,11 @@
     ?f <- (Juega O ?origen_i ?origen_j ?destino_i ?destino_j)
     ?h <- (Posicion ?origen_i ?origen_j O)
     ?g <- (Posicion ?destino_i ?destino_j " ")
+    ?k <- (is_winning  ?x1 ?y1 ?x2 ?y2 ?fi ?i ?j)
     ;?k1 <- (Enlinea ?movement ?origen_i ?origen_j ?x2 ?y2 O)
     ;?k2 <- (Enlinea ?movement ?x1 ?y1 ?origen_i ?origen_j O)
     =>
-    (retract ?f ?g ?h)
+    (retract ?f ?g ?h ?k)
     (assert (Turno X) ; <-- pasar turno
             (Posicion ?destino_i ?destino_j O)     ; <-- actualizar tablero 
             (Posicion ?origen_i ?origen_j " ") )   ; <-- actualizar tablero 
@@ -297,11 +298,28 @@
     (Fichas_sin_colocar X ?n)
     ;?g <- (Posicion ?i ?j " ") ; <-- toma una posicion del tablero vacia, sin ningun criterio (la primera que haga 'match')
 
-    (is_winning  ?x1 ?y1 ?x2 ?y2 O ?destino_i ?destino_j)
+    (is_winning ?x1 ?y1 ?x2 ?y2 O ?destino_i ?destino_j) ; <-- @jgomez : lo cambio para jugada "hacer ganar a la maquina"; seria equivalente para "tapar" al humano si va a ganarnos    
     ?g <- (Posicion ?destino_i ?destino_j " ")
-    (test (neq (?destino_i " ")))
+    ; (test (neq (?destino_i " "))) ; <-- @jgomez : no se que es esto, creo que se arrastra de alguna version anterior
     =>
-    (printout t "Juego poner ficha en " ?i ?j crlf)
+    (printout t "Juego poner ficha en " ?destino_i ?destino_j crlf) ; <-- @jgomez: la regla no cargaba con ?i ?j, que ya no estan en el antecedente
+    (retract ?f ?g)
+    (assert (Posicion ?destino_i ?destino_j X) ; <-- actualizar tablero 
+            (Turno O) 
+            (reducir_fichas_sin_colocar X))
+)
+
+(defrule clisp_juega_sin_criterio_fichas_sin_colocar_3
+    (declare (salience -8500))
+    ?f <- (Turno X)
+    (Fichas_sin_colocar X ?n)
+    ;?g <- (Posicion ?i ?j " ") ; <-- toma una posicion del tablero vacia, sin ningun criterio (la primera que haga 'match')
+
+    (is_winning ?x1 ?y1 ?x2 ?y2 X ?destino_i ?destino_j) ; <-- @jgomez : lo cambio para jugada "hacer ganar a la maquina"; seria equivalente para "tapar" al humano si va a ganarnos    
+    ?g <- (Posicion ?destino_i ?destino_j " ")
+    ; (test (neq (?destino_i " "))) ; <-- @jgomez : no se que es esto, creo que se arrastra de alguna version anterior
+    =>
+    (printout t "Juego poner ficha en " ?destino_i ?destino_j crlf) ; <-- @jgomez: la regla no cargaba con ?i ?j, que ya no estan en el antecedente
     (retract ?f ?g)
     (assert (Posicion ?destino_i ?destino_j X) ; <-- actualizar tablero 
             (Turno O) 
@@ -325,7 +343,21 @@
     (is_winning  ?x1 ?y1 ?x2 ?y2 O ?destino_i ?destino_j)
     (Conectado ?origen_i ?origen_j ? ?destino_i ?destino_j) ; <-- se asegura de que este conectada
     =>
-    (assert (Juega X ?origen_i ?origen_j ?destino_i!?i ?destino_j!?j))
+    (assert (Juega X ?origen_i ?origen_j ?destino_i ?destino_j))  ; <-- @jgomez: aqui habia un error de sintaxis
+    (printout t "Juego mover la ficha de "  ?origen_i ?origen_j " a " ?destino_i ?destino_j crlf)
+    (retract ?f)
+)
+
+(defrule clisp_juega_sin_criterio_2
+    (declare (salience -8500))
+    ?f <- (Turno X)
+    (Todas_fichas_en_tablero X)
+    (Posicion ?origen_i ?origen_j X)        ; <-- toma una posicion del tablero con X, sin ningun criterio (la primera que haga 'match')
+    (Posicion ?i ?j " ")    ; <-- toma una posicion del tablero vacia, sin ningun criterio (la primera que haga 'match')
+    (is_winning  ?x1 ?y1 ?x2 ?y2 X ?destino_i ?destino_j)
+    (Conectado ?origen_i ?origen_j ? ?destino_i ?destino_j) ; <-- se asegura de que este conectada
+    =>
+    (assert (Juega X ?origen_i ?origen_j ?destino_i ?destino_j))  ; <-- @jgomez: aqui habia un error de sintaxis
     (printout t "Juego mover la ficha de "  ?origen_i ?origen_j " a " ?destino_i ?destino_j crlf)
     (retract ?f)
 )
@@ -338,10 +370,11 @@
     ?f <- (Juega X ?origen_i ?origen_j ?destino_i ?destino_j)
     ?h <- (Posicion ?origen_i ?origen_j X) ; <-- con el cogido actual no seria necesario comprobarlo
     ?g <- (Posicion ?destino_i ?destino_j " ")
+    ?k <- (is_winning  ?x1 ?y1 ?x2 ?y2 ?fi ?i ?j)
     ;?k1 <- (Enlinea ?movement ?origen_i ?origen_j ?x2 ?y2 X)
     ;?k2 <- (Enlinea ?movement ?x1 ?y1 ?origen_i ?origen_j X)
     =>
-    (retract ?f ?g ?h)
+    (retract ?f ?g ?h ?k)
     (assert (Turno O)  ; <-- pasar turno a X
             (Posicion ?destino_i ?destino_j X) 
             (Posicion ?origen_i ?origen_j " ") )
@@ -351,6 +384,9 @@
 ; EXTENSION DEJL JUEGO KBS
 ; --------------------------------------------------------------------------------
 (defrule en_linea
+    ;salience
+    (declare (salience 10))
+    ; (Turno ?ficha) ; <--  @jgomez: fuerzo a comprobar en_linea solo para el jugador actual. Para "tapar" habria que 
     (Posicion ?x1 ?y1 ?ficha)
     (Posicion ?x2 ?y2 ?ficha)
     (Conectado ?x1 ?y1 ?movement ?x2 ?y2)
@@ -361,16 +397,19 @@
     )
 )
 
-(defrule eliminate_duplicate_en_linea
+(defrule eliminate_duplicate_en_linea 
+    (declare (salience 5)) ; <--  @jgomez 
     (Enlinea ?movement ?x1 ?y1 ?x2 ?y2 ?ficha)
     ?f <- (Enlinea ?movement ?x2 ?y2 ?x1 ?y1 ?ficha)
      =>
     (retract ?f)
 )
 
-(defrule normal_aligned 
+(defrule normal_aligned
+    (declare (salience 10))
     (Posicion ?x1 ?y1 ?ficha)
     (Posicion ?x2 ?y2 ?ficha)
+    (test (or (neq ?x1 ?x2) (neq ?y1 ?y2))) ; <--  @jgomez
     (Conectado ?x1 ?y1 ?aligned ?x_aux ?y_aux)
     (Conectado ?x_aux ?y_aux ?aligned ?x2 ?y2)
     
@@ -394,6 +433,7 @@
     (retract ?g)
 )
 (defrule position_left_to_win 
+    (declare (salience 10)) ; <--  @jgomez
     (Enlinea ?movement ?x1 ?y1 ?x2 ?y2 ?ficha)
     (Conectado ?x1 ?y1 ?movement ?x3 ?y3)
     (Posicion ?x3 ?y3 ?third_element)
@@ -427,7 +467,7 @@
 
 (defrule eliminate_duplicate_win
     (is_winning ?x1 ?y1 ?x2 ?y2 ?ficha ?x_mid ?y_mid)
-    ?k <- (is_winning  ?x2 ?y2 ?x1 ?y1 ?ficha ?x_mid2 ?y_mid)
+    ?k <- (is_winning  ?x2 ?y2 ?x1 ?y1 ?ficha2 ?x_mid2 ?y_mid)
     =>
     (retract ?k)
 )
@@ -481,10 +521,10 @@
     (test (or (neq ?i1 ?i3) (neq ?j1 ?j3)))
     
     ;eliminar todo los winning
-    ?g <- (is_winning  ?x1 ?y1 ?origen_i ?origen_j ?ficha ?x_mid2 ?y_mid2)
+    ;?g <- (is_winning  ?x1 ?y1 ?origen_i ?origen_j ?ficha ?x_mid2 ?y_mid2)
     =>
     (printout t ?jugador " ha ganado pues tiene tres en raya " ?i1 ?j1 " " ?i2 ?j2 " " ?i3 ?j3 crlf)
-    (retract ?f ?g)
+    (retract ?f)
     (assert (muestra_posicion))
 ) 
 
